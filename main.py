@@ -9,7 +9,10 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.filters import CommandStart,Command,CommandObject
 from aiogram.types import Message,KeyboardButton,ReplyKeyboardMarkup,InputFile,FSInputFile
+from pyexpat.errors import messages
+
 import local_token as lt
+import pymysql
 keyboard=ReplyKeyboardMarkup(keyboard=[
     [KeyboardButton(text="Bugungi ob havo"),KeyboardButton(text="ertangi ob havo")],
     [KeyboardButton(text="haftalik ob Havo"),KeyboardButton(text="10 kunlik")]
@@ -18,12 +21,24 @@ keyboard=ReplyKeyboardMarkup(keyboard=[
 
 bot = Bot(token=lt.TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 dp = Dispatcher()
+db=pymysql.connect(
+    host="localhost",
+    user="chingiz",
+    password="azar5408",
+    database="chingiz_dev",
+)
 
 @dp.message(CommandStart())
 async def command_start_handler(message: Message) -> None:
-    # await message.answer(f"Hello, {html.bold(message.from_user.full_name)}!")
-    await message.answer(text="obhavo tanlashingiz mumkin",reply_markup=keyboard)
-
+    await message.answer(f"Hello, {html.bold(message.from_user.full_name)}!")
+    # await message.answer(text="obhavo tanlashingiz mumkin",reply_markup=keyboard)
+@dp.message(Command['/user'])
+async def users():
+    cursor=db.cursor()
+    cursor.execute("SELECT * FROM men")
+    result=cursor.fetchall()
+    for i in result:
+        await messages.answer(text=i[0],reply_markup=keyboard)
 time_last = None
 last_response = None
 weather_code=-1
@@ -78,13 +93,6 @@ async def echo_handler(message: Message) -> None:
 
             discription, rasm = weather_descriptions.get(weather_code, ("Ob-havo holati noma'lum", "unknown.png"))
             time_last = now
-            # last_response = (
-            #     f"Kunning maksimal harorati: {max_temp}°C\n"
-            #     f"Kunning minimal harorati: {min_temp}°C\n"
-            #     f"Yog'ingarchilik miqdori: {precipitation} mm\n"
-            #     f"Bugungi ob havo: {discription} \n"
-            #     f"Shamolning maksimal tezligi: {max_wind_speed} km/soat"
-            # )
             last_response=(
                 f"🌨 Bugungi Ob-havo Ma'lumotlari\n"
                 "━━━━━━━━━━━━━━━ \n"
@@ -118,34 +126,6 @@ async def echo_handler(message: Message) -> None:
         #     print("salom")
         # else:
         #     await message.answer(f"Bugun soat-{time_last} da\n {last_response}")
-
-
-# Papka yo'li
-folder_path = "./galireya"
-
-
-@dp.message()
-async def send_photos(message: types.Message):
-    # Papkadan fayllarni o'qish
-    if not os.path.exists(folder_path):
-        await message.reply("Galireya papkasi topilmadi!")
-        return
-
-    files = os.listdir(folder_path)
-    if not files:
-        await message.reply("Papkada rasm yo'q!")
-        return
-
-    for file_name in files:
-        file_path = os.path.join(folder_path, file_name)
-        # Faylni tekshirish va jo'natish
-        if os.path.isfile(file_path):
-            try:
-                with open(file_path, 'rb') as photo:
-                    await bot.send_photo(chat_id=message.chat.id, photo=InputFile(photo))
-            except Exception as e:
-                await message.reply(f"Xatolik yuz berdi: {e}")
-
 
 async def main() -> None:
     global  bot
