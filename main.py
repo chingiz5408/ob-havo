@@ -31,7 +31,7 @@ db=pymysql.connect(
 async def command_start_handler(message: Message) -> None:
     await message.answer(f"Hello, {html.bold(message.from_user.full_name)}!")
     # await message.answer(text="obhavo tanlashingiz mumkin",reply_markup=keyboard)
-@dp.message_handler(commands=['user'])
+@dp.message(Command(commands=['user']))
 async def users(message: Message):
     cursor=db.cursor()
     cursor.execute("SELECT * FROM men")
