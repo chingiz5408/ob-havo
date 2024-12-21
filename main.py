@@ -26,18 +26,20 @@ db=pymysql.connect(
     password="azar5408",
     database="chingiz_dev",
 )
-
+cursor=db.cursor()
 @dp.message(CommandStart())
 async def command_start_handler(message: Message) -> None:
+    cursor.execute("INSERT INTO men(name,familiya,course) VALUES(%s,%s,%s)",
+    (message.from_user.full_name, message.from_user.first_name, "some_course"))
+    db.commit()
     await message.answer(f"Hello, {html.bold(message.from_user.full_name)}!")
-    # await message.answer(text="obhavo tanlashingiz mumkin",reply_markup=keyboard)
 @dp.message(Command(commands=['user']))
 async def users(message: Message):
-    cursor=db.cursor()
     cursor.execute("SELECT * FROM men")
     result=cursor.fetchall()
     for i in result:
-        await message.answer(text=f"{i[0]}",reply_markup=keyboard)
+        text=f"{i[0]}-{i[1]}-{i[2]}-{i[3]}"
+        await message.answer(text=text,reply_markup=keyboard)
 time_last = None
 last_response = None
 weather_code=-1
