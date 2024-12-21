@@ -9,7 +9,6 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.filters import CommandStart,Command,CommandObject
 from aiogram.types import Message,KeyboardButton,ReplyKeyboardMarkup,InputFile,FSInputFile
-from pyexpat.errors import messages
 
 import local_token as lt
 import pymysql
@@ -32,13 +31,13 @@ db=pymysql.connect(
 async def command_start_handler(message: Message) -> None:
     await message.answer(f"Hello, {html.bold(message.from_user.full_name)}!")
     # await message.answer(text="obhavo tanlashingiz mumkin",reply_markup=keyboard)
-@dp.message(Command['/user'])
-async def users():
+@dp.message_handler(commands=['user'])
+async def users(message: Message):
     cursor=db.cursor()
     cursor.execute("SELECT * FROM men")
     result=cursor.fetchall()
     for i in result:
-        await messages.answer(text=i[0],reply_markup=keyboard)
+        await message.answer(text=f"{i[0]}",reply_markup=keyboard)
 time_last = None
 last_response = None
 weather_code=-1
