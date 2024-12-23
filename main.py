@@ -2,14 +2,12 @@ from datetime import datetime
 import asyncio
 import logging
 import sys
-import os
 import  requests
-from aiogram import Bot, Dispatcher, html,types
+from aiogram import Bot, Dispatcher, html
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
-from aiogram.filters import CommandStart,Command,CommandObject
-from aiogram.types import Message,KeyboardButton,ReplyKeyboardMarkup,InputFile,FSInputFile
-
+from aiogram.filters import CommandStart,Command
+from aiogram.types import Message,KeyboardButton,ReplyKeyboardMarkup,FSInputFile
 import local_token as lt
 import pymysql
 keyboard=ReplyKeyboardMarkup(keyboard=[
@@ -20,26 +18,26 @@ keyboard=ReplyKeyboardMarkup(keyboard=[
 
 bot = Bot(token=lt.TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 dp = Dispatcher()
-db=pymysql.connect(
-    host="localhost",
-    user="chingiz",
-    password="azar5408",
-    database="chingiz_dev",
-)
-cursor=db.cursor()
+# db=pymysql.connect(
+#     host="localhost",
+#     user="chingiz",
+#     password="azar5408",
+#     database="chingiz_dev",
+# )
+# cursor=db.cursor()
 @dp.message(CommandStart())
 async def command_start_handler(message: Message) -> None:
-    cursor.execute("INSERT INTO men(name,familiya,course) VALUES(%s,%s,%s)",
-    (message.from_user.full_name, message.from_user.first_name, "some_course"))
-    db.commit()
+    # cursor.execute("INSERT INTO men(name,familiya,course) VALUES(%s,%s,%s)",
+    # (message.from_user.full_name, message.from_user.first_name, "some_course"))
+    # db.commit()
     await message.answer(f"Hello, {html.bold(message.from_user.full_name)}!")
-@dp.message(Command(commands=['user']))
-async def users(message: Message):
-    cursor.execute("SELECT * FROM men")
-    result=cursor.fetchall()
-    for i in result:
-        text=f"{i[0]}-{i[1]}-{i[2]}-{i[3]}"
-        await message.answer(text=text,reply_markup=keyboard)
+# @dp.message(Command(commands=['user']))
+# async def users(message: Message):
+#     cursor.execute("SELECT * FROM men")
+#     result=cursor.fetchall()
+#     for i in result:
+#         text=f"{i[0]}-{i[1]}-{i[2]}-{i[3]}"
+#         await message.answer(text=text,reply_markup=keyboard)
 time_last = None
 last_response = None
 weather_code=-1
@@ -73,6 +71,28 @@ weather_descriptions = {
                     96: ("Kuchli momaqaldiroq", "Kuchli_momaqaldiroq.jpg"),
                     99: ("Juda kuchli momaqaldiroq", "Juda_kuchli_momaqaldiroq.jpg"),
                 }
+def funk(weather_code):
+    soat = datetime.now().hour
+    print(soat)
+    for i in range(9):
+        print("salom")
+    if 0 <= soat < 3:
+        weather_code = weather_code[0]
+    elif 3 <= soat < 6:
+        weather_code = weather_code[1]
+    elif 6 <= soat < 9:
+        weather_code = weather_code[2]
+    elif 9 <= soat < 12:
+        weather_code = weather_code[3]
+    elif 12 <= soat < 15:
+        weather_code = weather_code[4]
+    elif 15 <= soat < 18:
+        weather_code = weather_code[5]
+    elif 18 <= soat < 21:
+        weather_code = weather_code[6]
+    else:
+        weather_code=weather_code[6]
+    return weather_code
 @dp.message()
 async def echo_handler(message: Message) -> None:
     global time_last,last_response,weather_code,weather_descriptions
@@ -90,9 +110,12 @@ async def echo_handler(message: Message) -> None:
             min_temp = data['daily']['temperature_2m_min'][0]
             precipitation = data['daily']['precipitation_sum'][0]
             max_wind_speed = data['daily']['windspeed_10m_max'][0]
-            weather_code = data['daily']['weathercode'][0]
-
-            discription, rasm = weather_descriptions.get(weather_code, ("Ob-havo holati noma'lum", "unknown.png"))
+            weather_code = data['daily']['weathercode']
+            for i in range(9):
+                print("salom")
+            weather=funk(weather_code)
+            print(weather)
+            discription, rasm = weather_descriptions.get(weather, ("Ob-havo holati noma'lum", "unknown.png"))
             time_last = now
             last_response=(
                 f"🌨 Bugungi Ob-havo Ma'lumotlari\n"
@@ -108,25 +131,14 @@ async def echo_handler(message: Message) -> None:
                 f"⚠️ Iltimos, ehtiyot bo'ling: qor yo'llarni sirpanchiq qilishi mumkin!\n"
                 f"❓ Bugungi rejalaringiz qanday? ❄"
             )
-
             rasm_file = "./galireya/"+rasm
-            # if not os.path.exists(rasm_file):
-            #     await message.answer("Kiritilgan fayl yo'q yoki noto'g'ri manzil ko'rsatilgan!")
-            # else :
-            #     await message.answer("Kiritilgan fayl bor yoki yaxshi manzil ko'rsatilgan!")
             try:
                 photo = FSInputFile(rasm_file)
                 await bot.send_photo(chat_id=message.chat.id, photo=photo, caption=last_response)
-                  # Rasmni InputFile sifatida o'zgartirish
-                # await message.answer_photo(photo, caption="Mana sizning rasmingiz!")
             except Exception as e:
                 await message.answer(f"Xatolik yuz berdi: {e}")
         else:
             await message.answer("Ob-havo ma'lumotlarini olishda xatolik yuz berdi!")
-        # if time_last is None or now != time_last:
-        #     print("salom")
-        # else:
-        #     await message.answer(f"Bugun soat-{time_last} da\n {last_response}")
 
 async def main() -> None:
     global  bot
