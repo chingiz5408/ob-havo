@@ -2,3 +2,5 @@
 venv
 local_token.py
 bot.log
+__pycache__/
+*.pyc

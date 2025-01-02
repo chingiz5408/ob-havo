@@ -67,25 +67,27 @@ def getInfo(manzil):
     else:
         return "Bunday manzil mavjud emas"
 
-def makeMessage(discription,max_temp,min_temp,precipitation,max_wind_speed,j,t)->str:
+def makeMessage(discription,max_temp,min_temp,precipitation,max_wind_speed,jarayon,tavsiya)->str:
+    print(jarayon)
     response = (
         f"🌨 Bugungi Ob-havo Ma'lumotlari\n"
         "━━━━━━━━━━━━━━━ \n"
         f"📆 {datetime.now().strftime('Sana: %d-%m-%Y  Vaqt: %H:%M')}\n"
-        f"🕒 Holat: {discription} {j}!\n"
+        f"🕒 Holat: {discription} {jarayon}\n"
         f"❄ Haroratlar:{max_temp}°C\n"
         f"▫ Maksimal: {max_temp}°C 🌡\n"
         f"▫ Tunda: {min_temp}°C 🥶\n"
         f"💧 Yog'ingarchilik miqdori: {precipitation} mm\n"
         f"🌬 Shamol tezligi: {max_wind_speed} km/soat 🌪\n"
         "━━━━━━━━━━━━━━━\n"
-        f"{t}\n"
+        f"{tavsiya}\n"
         f"❓ Bugungi rejalaringiz qanday?"
     )
     return response
 
 def getWeatherStatus(code):
-    result=cursor.execute(f"select * from weather where code={code}").fetchall()
+    cursor.execute(f"SELECT * FROM `weather` WHERE code={code}")
+    result = cursor.fetchall()
     return result
 
 @dp.message()
@@ -102,10 +104,10 @@ async def echo_handler(message: Message) -> None:
             weather_code = data['daily']['weathercode']
             weather_code=weather_cod(weather_code)
             result=getWeatherStatus(weather_code)
-            discription= result[2]
-            rasm=result[3]
-            jarayon=result[4]
-            tavsiya=result[5]
+            discription= result[0][2]
+            rasm=result[0][3]
+            jarayon=result[0][4]
+            tavsiya=result[0][5]
             last_response=makeMessage(discription,max_temp,min_temp,precipitation,max_wind_speed,jarayon,tavsiya)
             rasm_file = "./galireya/"+rasm
             try:
