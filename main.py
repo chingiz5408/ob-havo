@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import sys
-import  requests
+import requests
 from aiogram import Bot, Dispatcher, html
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
@@ -9,9 +9,9 @@ from aiogram.filters import CommandStart,Command
 from aiogram.types import Message,KeyboardButton,ReplyKeyboardMarkup,FSInputFile
 import local_token as lt
 from datetime import datetime
-from .db import *
-from .Joylashuvlar import joylar
-from .wether import weather,weather_cod
+from db import get_db_connection
+from Joylashuvlar import joylar
+from wether import weather_cod
 
 keyboard = ReplyKeyboardMarkup(
     keyboard=[
@@ -30,13 +30,16 @@ keyboard = ReplyKeyboardMarkup(
 
 bot = Bot(token=lt.TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 dp = Dispatcher()
+db = get_db_connection()
+cursor = db.cursor()
+
 
 @dp.message(CommandStart())
 async def command_start_handler(message: Message) -> None:
     cursor.execute("INSERT INTO men(name,familiya,course) VALUES(%s,%s,%s)",
     (message.from_user.full_name, message.from_user.first_name, "some_course"))
     db.commit()
-    await message.answer(f"Hello, {html.bold(message.from_user.full_name)}!")
+    await message.answer(f"Hello, {html.bold(message.from_user.full_name)}!",reply_markup=keyboard)
 
 @dp.message(Command(commands=['user']))
 async def users(message: Message):
@@ -51,32 +54,39 @@ last_response = None
 weather_code=-1
 
 def getInfo(manzil):
-    kenglik=joylar[manzil][0]
-    uzunlik=joylar[manzil][1]
-    url = (
+    if manzil in joylar:
+        kenglik = joylar[manzil][0]
+        uzunlik = joylar[manzil][1]
+        url = (
             f"https://api.open-meteo.com/v1/forecast?latitude={kenglik}&longitude={uzunlik}"
             "&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_max,weathercode"
             "&timezone=auto"
-    )
-    response = requests.get(url)
-    return response
+        )
+        response = requests.get(url)
+        return response
+    else:
+        return "Bunday manzil mavjud emas"
 
-def makeMessage(discription,max_temp,min_temp,precipitation,max_wind_speed)->str:
-    last_response = (
+def makeMessage(discription,max_temp,min_temp,precipitation,max_wind_speed,j,t)->str:
+    response = (
         f"🌨 Bugungi Ob-havo Ma'lumotlari\n"
         "━━━━━━━━━━━━━━━ \n"
         f"📆 {datetime.now().strftime('Sana: %d-%m-%Y  Vaqt: %H:%M')}\n"
-        f"🕒 Holat: {discription} yog'moqda!\n"
+        f"🕒 Holat: {discription} {j}!\n"
         f"❄ Haroratlar:{max_temp}°C\n"
         f"▫ Maksimal: {max_temp}°C 🌡\n"
         f"▫ Tunda: {min_temp}°C 🥶\n"
         f"💧 Yog'ingarchilik miqdori: {precipitation} mm\n"
         f"🌬 Shamol tezligi: {max_wind_speed} km/soat 🌪\n"
         "━━━━━━━━━━━━━━━\n"
-        f"⚠️ Iltimos, ehtiyot bo'ling: qor yo'llarni sirpanchiq qilishi mumkin!\n"
-        f"❓ Bugungi rejalaringiz qanday? ❄"
+        f"{t}\n"
+        f"❓ Bugungi rejalaringiz qanday?"
     )
-    return last_response
+    return response
+
+def getWeatherStatus(code):
+    result=cursor.execute(f"select * from weather where code={code}").fetchall()
+    return result
 
 @dp.message()
 async def echo_handler(message: Message) -> None:
@@ -91,8 +101,12 @@ async def echo_handler(message: Message) -> None:
             max_wind_speed = data['daily']['windspeed_10m_max'][0]
             weather_code = data['daily']['weathercode']
             weather_code=weather_cod(weather_code)
-            discription, rasm = weather.get(weather_code, ("Ob-havo holati noma'lum", "unknown.png"))
-            last_response=makeMessage(discription,max_temp,min_temp,precipitation,max_wind_speed)
+            result=getWeatherStatus(weather_code)
+            discription= result[2]
+            rasm=result[3]
+            jarayon=result[4]
+            tavsiya=result[5]
+            last_response=makeMessage(discription,max_temp,min_temp,precipitation,max_wind_speed,jarayon,tavsiya)
             rasm_file = "./galireya/"+rasm
             try:
                 photo = FSInputFile(rasm_file)
