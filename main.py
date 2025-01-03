@@ -30,24 +30,67 @@ keyboard = ReplyKeyboardMarkup(
 
 bot = Bot(token=lt.TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 dp = Dispatcher()
-db = get_db_connection()
-cursor = db.cursor()
 
 
+# @dp.message(CommandStart())
+# async def command_start_handler(message: Message) -> None:
+#     cursor.execute("INSERT INTO men(name,familiya,course) VALUES(%s,%s,%s)",
+#     (message.from_user.full_name, message.from_user.first_name, "some_course"))
+#     db.commit()
+#     await message.answer(f"Hello, {html.bold(message.from_user.full_name)}!",reply_markup=keyboard)
 @dp.message(CommandStart())
 async def command_start_handler(message: Message) -> None:
-    cursor.execute("INSERT INTO men(name,familiya,course) VALUES(%s,%s,%s)",
-    (message.from_user.full_name, message.from_user.first_name, "some_course"))
-    db.commit()
-    await message.answer(f"Hello, {html.bold(message.from_user.full_name)}!",reply_markup=keyboard)
+    db = get_db_connection()
+    try:
+        cursor = db.cursor()
+        cursor.execute(
+            "INSERT INTO men(name, familiya, course) VALUES (%s, %s, %s)",
+            (
+                message.from_user.full_name or "Unknown",
+                message.from_user.first_name or "Unknown",
+                "some_course"
+            )
+        )
+        db.commit()
+        await message.answer(
+            f"Hello, {html.bold(message.from_user.full_name or 'User')}!",
+            reply_markup=keyboard
+        )
+    except Exception as e:
+        print(f"Error: {e}")
+        await message.answer("An error occurred.")
+    finally:
+        cursor.close()
+        db.close()
 
+
+# @dp.message(Command(commands=['user']))
+# async def users(message: Message):
+#     cursor.execute("SELECT * FROM men")
+#     result=cursor.fetchall()
+#     for i in result:
+#         text=f"{i[0]}-{i[1]}-{i[2]}-{i[3]}"
+#         await message.answer(text=text,reply_markup=keyboard)
 @dp.message(Command(commands=['user']))
 async def users(message: Message):
-    cursor.execute("SELECT * FROM men")
-    result=cursor.fetchall()
-    for i in result:
-        text=f"{i[0]}-{i[1]}-{i[2]}-{i[3]}"
-        await message.answer(text=text,reply_markup=keyboard)
+    db = get_db_connection()
+    try:
+        cursor = db.cursor()
+        cursor.execute("SELECT * FROM men")
+        result = cursor.fetchall()
+        if result:
+            for row in result:
+                text = f"{row['id']}: {row['name']} {row['familiya']} - {row['course']}"
+                await message.answer(text=text, reply_markup=keyboard)
+        else:
+            await message.answer("foydalanuvchi topilmadi.")
+    except Exception as e:
+        print(f"Error: {e}")
+        await message.answer("An error occurred.")
+    finally:
+        cursor.close()
+        db.close()
+
 
 time_last = None
 last_response = None
