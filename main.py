@@ -11,6 +11,7 @@ import local_token as lt
 from datetime import datetime
 from db import get_db_connection
 from Joylashuvlar import joylar
+from fastApi import cursor
 from wether import weather_cod
 
 keyboard = ReplyKeyboardMarkup(
@@ -129,8 +130,12 @@ def makeMessage(discription,max_temp,min_temp,precipitation,max_wind_speed,holat
     return response
 
 def getWeatherStatus(code):
+    db = get_db_connection()
+    db.cursor()
     cursor.execute(f"SELECT * FROM `weather` WHERE code={code}")
     result = cursor.fetchall()
+    cursor.close()
+    db.close()
     return result
 
 @dp.message()
