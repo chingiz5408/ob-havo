@@ -67,10 +67,10 @@ def getInfo(manzil):
     else:
         return "Bunday manzil mavjud emas"
 
-def makeMessage(discription,max_temp,min_temp,precipitation,max_wind_speed,jarayon,tavsiya)->str:
-    print(jarayon)
+def makeMessage(discription,max_temp,min_temp,precipitation,max_wind_speed,holat,jarayon,tavsiya)->str:
+
     response = (
-        f"🌨 Bugungi Ob-havo Ma'lumotlari\n"
+        f"{holat} Bugungi Ob-havo Ma'lumotlari\n"
         "━━━━━━━━━━━━━━━ \n"
         f"📆 {datetime.now().strftime('Sana: %d-%m-%Y  Vaqt: %H:%M')}\n"
         f"🕒 Holat: {discription} {jarayon}\n"
@@ -94,6 +94,7 @@ def getWeatherStatus(code):
 async def echo_handler(message: Message) -> None:
     global time_last,last_response,weather_code
     if message.text:
+        print(message.text)
         response = getInfo(message.text)
         if response.status_code == 200:
             data = response.json()
@@ -106,9 +107,10 @@ async def echo_handler(message: Message) -> None:
             result=getWeatherStatus(weather_code)
             discription= result[0][2]
             rasm=result[0][3]
-            jarayon=result[0][4]
-            tavsiya=result[0][5]
-            last_response=makeMessage(discription,max_temp,min_temp,precipitation,max_wind_speed,jarayon,tavsiya)
+            holat=result[0][4]
+            jarayon=result[0][5]
+            tavsiya=result[0][6]
+            last_response=makeMessage(discription,max_temp,min_temp,precipitation,max_wind_speed,holat,jarayon,tavsiya)
             rasm_file = "./galireya/"+rasm
             try:
                 photo = FSInputFile(rasm_file)
