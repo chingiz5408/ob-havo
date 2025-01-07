@@ -54,14 +54,6 @@ async def command_start_handler(message: Message) -> None:
         print(f"Error: {e}")
         await message.answer("sizni bazaga qo'sha olmadik")
 
-
-# @dp.message(Command(commands=['user']))
-# async def users(message: Message):
-#     cursor.execute("SELECT * FROM men")
-#     result=cursor.fetchall()
-#     for i in result:
-#         text=f"{i[0]}-{i[1]}-{i[2]}-{i[3]}"
-#         await message.answer(text=text,reply_markup=keyboard)
 @dp.message(Command(commands=['user']))
 async def users(message: Message):
     db = get_db_connection()
