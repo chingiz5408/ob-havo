@@ -11,8 +11,6 @@ import local_token as lt
 from datetime import datetime
 from db import get_db_connection
 from Joylashuvlar import joylar
-from fastApi import cursor
-from wether import weather_cod
 
 keyboard = ReplyKeyboardMarkup(
     keyboard=[
@@ -23,7 +21,7 @@ keyboard = ReplyKeyboardMarkup(
         [KeyboardButton(text="Navoiy"), KeyboardButton(text="Qashqadaryo")],
         [KeyboardButton(text="Qoraqalpog‘iston"), KeyboardButton(text="Samarqand")],
         [KeyboardButton(text="Sirdaryo"), KeyboardButton(text="Surxondaryo")],
-        [KeyboardButton(text="10 kunlik")],
+        [KeyboardButton(text="Haftalik")],
     ],
     resize_keyboard=True
 )
@@ -32,13 +30,6 @@ keyboard = ReplyKeyboardMarkup(
 bot = Bot(token=lt.TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 dp = Dispatcher()
 
-
-# @dp.message(CommandStart())
-# async def command_start_handler(message: Message) -> None:
-#     cursor.execute("INSERT INTO men(name,familiya,course) VALUES(%s,%s,%s)",
-#     (message.from_user.full_name, message.from_user.first_name, "some_course"))
-#     db.commit()
-#     await message.answer(f"Hello, {html.bold(message.from_user.full_name)}!",reply_markup=keyboard)
 @dp.message(CommandStart())
 async def command_start_handler(message: Message) -> None:
     db = get_db_connection()
@@ -48,21 +39,20 @@ async def command_start_handler(message: Message) -> None:
             "INSERT INTO men(name, familiya, course) VALUES (%s, %s, %s)",
             (
                 message.from_user.full_name or "Unknown",
-                message.from_user.first_name or "Unknown",
+                message.from_user.username or "Unknown",
                 "some_course"
             )
         )
         db.commit()
+        cursor.close()
+        db.close()
         await message.answer(
             f"Hello, {html.bold(message.from_user.full_name or 'User')}!",
             reply_markup=keyboard
         )
     except Exception as e:
         print(f"Error: {e}")
-        await message.answer("An error occurred.")
-    finally:
-        cursor.close()
-        db.close()
+        await message.answer("sizni bazaga qo'sha olmadik")
 
 
 # @dp.message(Command(commands=['user']))
@@ -79,18 +69,20 @@ async def users(message: Message):
         cursor = db.cursor()
         cursor.execute("SELECT * FROM men")
         result = cursor.fetchall()
+        print(result)
+        cursor.close()
         if result:
             for row in result:
-                text = f"{row['id']}: {row['name']} {row['familiya']} - {row['course']}"
+                text = f"Id=>{row[0]}\n Fullname=>{row[1]}\n Username=>{row[2]}\n Kursi=>{row[3]}"
                 await message.answer(text=text, reply_markup=keyboard)
         else:
             await message.answer("foydalanuvchi topilmadi.")
     except Exception as e:
         print(f"Error: {e}")
-        await message.answer("An error occurred.")
+        await message.answer(f"xato {e}")
     finally:
-        cursor.close()
         db.close()
+
 
 
 time_last = None
@@ -131,7 +123,7 @@ def makeMessage(discription,max_temp,min_temp,precipitation,max_wind_speed,holat
 
 def getWeatherStatus(code):
     db = get_db_connection()
-    db.cursor()
+    cursor=db.cursor()
     cursor.execute(f"SELECT * FROM `weather` WHERE code={code}")
     result = cursor.fetchall()
     cursor.close()
@@ -142,17 +134,16 @@ def getWeatherStatus(code):
 async def echo_handler(message: Message) -> None:
     global time_last,last_response,weather_code
     if message.text:
-        print(message.text)
         response = getInfo(message.text)
         if response.status_code == 200:
             data = response.json()
+            print(data)
             max_temp = data['daily']['temperature_2m_max'][0]
             min_temp = data['daily']['temperature_2m_min'][0]
             precipitation = data['daily']['precipitation_sum'][0]
             max_wind_speed = data['daily']['windspeed_10m_max'][0]
             weather_code = data['daily']['weathercode']
-            weather_code=weather_cod(weather_code)
-            result=getWeatherStatus(weather_code)
+            result=getWeatherStatus(weather_code[0])
             discription= result[0][2]
             rasm=result[0][3]
             holat=result[0][4]
