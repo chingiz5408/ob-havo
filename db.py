@@ -7,7 +7,7 @@ def get_db_connection():
             user="root",
             password="",
             port=3307,
-            database="chingiz_dev",
+            database="chingiz5408_dev",
         )
         return connection
     except pymysql.MySQLError as e:

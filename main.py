@@ -47,7 +47,7 @@ async def command_start_handler(message: Message) -> None:
         cursor.close()
         db.close()
         await message.answer(
-            f"Hello, {html.bold(message.from_user.full_name or 'User')}!",
+            f"Salom, {html.bold(message.from_user.full_name or 'User')}!",
             reply_markup=keyboard
         )
     except Exception as e:
@@ -87,7 +87,7 @@ def getInfo(manzil):
         uzunlik = joylar[manzil][1]
         url = (
             f"https://api.open-meteo.com/v1/forecast?latitude={kenglik}&longitude={uzunlik}"
-            "&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,windspeed_10m_max,weathercode"
+            "&hourly=temperature_2m,precipitation,weathercode,windspeed_10m"
             "&timezone=auto"
         )
         response = requests.get(url)
@@ -95,23 +95,22 @@ def getInfo(manzil):
     else:
         return "Bunday manzil mavjud emas"
 
-def makeMessage(discription,max_temp,min_temp,precipitation,max_wind_speed,holat,jarayon,tavsiya)->str:
 
+def makeMessage(discription, temperature, precipitation, wind_speed, holat, jarayon, tavsiya) -> str:
     response = (
-        f"{holat} Bugungi Ob-havo Ma'lumotlari\n"
+        f"{holat} Ayni paytdagi Ob-havo\n"
         "━━━━━━━━━━━━━━━ \n"
         f"📆 {datetime.now().strftime('Sana: %d-%m-%Y  Vaqt: %H:%M')}\n"
         f"🕒 Holat: {discription} {jarayon}\n"
-        f"❄ Haroratlar:{max_temp}°C\n"
-        f"▫ Maksimal: {max_temp}°C 🌡\n"
-        f"▫ Tunda: {min_temp}°C 🥶\n"
-        f"💧 Yog'ingarchilik miqdori: {precipitation} mm\n"
-        f"🌬 Shamol tezligi: {max_wind_speed} km/soat 🌪\n"
+        f"🌡 Harorat: {temperature}°C\n"
+        f"💧 Yog'ingarchilik: {precipitation} mm\n"
+        f"🌬 Shamol tezligi: {wind_speed} km/soat\n"
         "━━━━━━━━━━━━━━━\n"
         f"{tavsiya}\n"
         f"❓ Bugungi rejalaringiz qanday?"
     )
     return response
+
 
 def getWeatherStatus(code):
     db = get_db_connection()
@@ -124,32 +123,48 @@ def getWeatherStatus(code):
 
 @dp.message()
 async def echo_handler(message: Message) -> None:
-    global time_last,last_response,weather_code
+    global time_last, last_response, weather_code
     if message.text:
         response = getInfo(message.text)
-        if response.status_code == 200:
-            data = response.json()
-            print(data)
-            max_temp = data['daily']['temperature_2m_max'][0]
-            min_temp = data['daily']['temperature_2m_min'][0]
-            precipitation = data['daily']['precipitation_sum'][0]
-            max_wind_speed = data['daily']['windspeed_10m_max'][0]
-            weather_code = data['daily']['weathercode']
-            result=getWeatherStatus(weather_code[0])
-            discription= result[0][2]
-            rasm=result[0][3]
-            holat=result[0][4]
-            jarayon=result[0][5]
-            tavsiya=result[0][6]
-            last_response=makeMessage(discription,max_temp,min_temp,precipitation,max_wind_speed,holat,jarayon,tavsiya)
-            rasm_file = "./galireya/"+rasm
-            try:
-                photo = FSInputFile(rasm_file)
-                await bot.send_photo(chat_id=message.chat.id, photo=photo, caption=last_response)
-            except Exception as e:
-                await message.answer(f"Xatolik yuz berdi: {e}")
+        if isinstance(response, str):
+            await message.answer(response)
         else:
-            await message.answer("Ob-havo ma'lumotlarini olishda xatolik yuz berdi!")
+            if response.status_code == 200:
+                data = response.json()
+
+                now = datetime.now().strftime('%Y-%m-%dT%H:00')
+                times = data['hourly']['time']
+                
+                if now in times:
+                    index = times.index(now)
+                else:
+                    index = 0  # fallback
+
+                temperature = data['hourly']['temperature_2m'][index]
+                precipitation = data['hourly']['precipitation'][index]
+                wind_speed = data['hourly']['windspeed_10m'][index]
+                weather_code_val = data['hourly']['weathercode'][index]
+
+                result = getWeatherStatus(weather_code_val)
+                if result:
+                    discription = result[0][2]
+                    rasm = result[0][3]
+                    holat = result[0][4]
+                    jarayon = result[0][5]
+                    tavsiya = result[0][6]
+
+                    last_response = makeMessage(discription, temperature, precipitation, wind_speed, holat, jarayon, tavsiya)
+                    rasm_file = "./galireya/" + rasm
+
+                    try:
+                        photo = FSInputFile(rasm_file)
+                        await bot.send_photo(chat_id=message.chat.id, photo=photo, caption=last_response)
+                    except Exception as e:
+                        await message.answer(f"Xatolik yuz berdi: {e}")
+                else:
+                    await message.answer("Ma'lumotlar bazasidan ob-havo kodi topilmadi.")
+            else:
+                await message.answer("Ob-havo ma'lumotlarini olishda xatolik yuz berdi!")
 
 async def main() -> None:
     global  bot
@@ -162,5 +177,5 @@ if __name__ == "__main__":
             logging.FileHandler("bot.log"),#bu qism holatni bot.log filega yozib bpradi
             logging.StreamHandler(sys.stdout)#bu qism terminalda holatni bildirib turadi
         ]
-                        )
+    )
     asyncio.run(main())
